@@ -141,6 +141,7 @@ class Simulation(object):
     def simulate(self, iterable, keep_photons_beg=False, keep_photons_end=False,
                  keep_hits=True, keep_flat_hits=True, run_daq=False, max_steps=1000,
                  photons_per_batch=1000000):
+        print('Running sim...')
         if isinstance(iterable, event.Photons):
             first_element, iterable = iterable, [iterable]
         else:
