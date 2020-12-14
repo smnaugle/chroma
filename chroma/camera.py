@@ -877,20 +877,20 @@ class EventViewer(Camera):
     
     def render_mc_info_all_events(self):
         #function added by Sam to visualize all events in a root file at the same time
+        self.gpu_geometries = [self.gpu_geometry]
         for i, ev in enumerate(self.rr):
             print('Evaluating event %i' %i)
-            self.gpu_geometries = [self.gpu_geometry]
-            if self.sum_mode or self.ev is None:
+            if self.sum_mode or ev is None:
                 return
  
-            if self.track_display_mode in ['chroma', 'both'] and self.ev.photon_tracks is not None:
+            if self.track_display_mode in ['chroma', 'both'] and ev.photon_tracks is not None:
                 geometry = Geometry()
-                print('Total Photons',len(self.ev.photon_tracks))
+                print('Total Photons',len(ev.photon_tracks))
                 
                 def has(flags,test):
                     return flags & test == test
                 
-                tracks = self.ev.photon_tracks
+                tracks = ev.photon_tracks
                 if self.photons_detected_only:
                     detected = np.asarray([has(track.flags[-1],event.SURFACE_DETECT) for track in tracks])
                     tracks = [t for t,m in zip(tracks,detected) if m]
