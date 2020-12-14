@@ -978,7 +978,7 @@ class EventViewer(Camera):
                 else:
                     self.color_hit_pmts()
                     self.render_mc_info()
-                    self.update()
+                    #self.update() #FIXME
                 return
 
             elif event.key == K_LEFT and not self.sum_mode:
