@@ -5,10 +5,10 @@ USER root
 RUN apt-get update && apt-get install -y curl git
 
 WORKDIR /opt/
-RUN curl -O https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh
-RUN chmod +x Anaconda3-2020.02-Linux-x86_64.sh
-RUN ./Anaconda3-2020.02-Linux-x86_64.sh -b -p /opt/anaconda3
-RUN rm Anaconda3-2020.02-Linux-x86_64.sh
+RUN curl -O https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh
+RUN chmod +x Anaconda3-2020.07-Linux-x86_64.sh
+RUN ./Anaconda3-2020.07-Linux-x86_64.sh -b -p /opt/anaconda3
+RUN rm Anaconda3-2020.07-Linux-x86_64.sh
 COPY chroma_env.sh /etc/profile.d/
 SHELL ["/bin/bash", "-l", "-c"] 
 RUN conda install -y -c anaconda boost cmake
@@ -26,14 +26,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y dpkg-dev gcc g++ binutils libx11-dev libxpm-dev libxft-dev libxext-dev libgsl-dev libfftw3-dev libpcre3-dev
 
 WORKDIR /opt/
-RUN curl -O https://root.cern/download/root_v6.18.04.source.tar.gz
-RUN tar xf root_v6.18.04.source.tar.gz
-RUN rm root_v6.18.04.source.tar.gz
-WORKDIR /opt/root-6.18.04/build-root
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/root -Dminuit2=ON -Droofit=ON /opt/root-6.18.04
+RUN curl -O https://root.cern/download/root_v6.22.02.source.tar.gz
+RUN tar xf root_v6.22.02.source.tar.gz
+RUN rm root_v6.22.02.source.tar.gz
+WORKDIR /opt/root-6.22.02/build-root
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/root -Dpython3=ON -Ddavix=OFF -Dminuit2=ON -Droofit=ON /opt/root-6.22.02
 RUN make -j12
 RUN make install
-RUN rm -rf /opt/root-6.18.04
+RUN rm -rf /opt/root-6.22.02
 
 FROM ubuntu:20.04 as build-geant4
 MAINTAINER Benjamin Land <benland100@gmail.com>
@@ -74,7 +74,6 @@ MAINTAINER Benjamin Land <benland100@gmail.com>
 
 USER root
 RUN apt-get update && apt-get install -y curl git
-COPY chroma_env.sh /etc/profile.d/
 SHELL ["/bin/bash", "-l", "-c"] 
 COPY --from=build-anaconda /opt/anaconda3 /opt/anaconda3
 ARG DEBIAN_FRONTEND=noninteractive

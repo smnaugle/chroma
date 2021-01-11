@@ -17,7 +17,7 @@ struct Vertex {
   int pdgcode;
   
   std::vector<Vertex> children;
-  std::vector<double> step_x,step_y,step_z,step_t,step_px,step_py,step_pz,step_ke,step_edep;
+  std::vector<double> step_x,step_y,step_z,step_t,step_dx,step_dy,step_dz,step_ke,step_edep,step_qedep;
 
   ClassDef(Vertex, 1);
 };
@@ -81,91 +81,81 @@ void clear_steps(Vertex *vtx) {
   vtx->step_y.resize(0);
   vtx->step_z.resize(0);
   vtx->step_t.resize(0);
-  vtx->step_px.resize(0);
-  vtx->step_py.resize(0);
-  vtx->step_pz.resize(0);
+  vtx->step_dx.resize(0);
+  vtx->step_dy.resize(0);
+  vtx->step_dz.resize(0);
   vtx->step_ke.resize(0);
   vtx->step_edep.resize(0);
+  vtx->step_qedep.resize(0);
 }
 
 void fill_steps(Vertex *vtx, unsigned int nsteps, double *x, double *y, double *z,
-        double *t, double *px, double *py, double *pz, double *ke, double *edep) {
+        double *t, double *dx, double *dy, double *dz, double *ke, double *edep, double *qedep) {
   vtx->step_x.resize(nsteps);
   vtx->step_y.resize(nsteps);
   vtx->step_z.resize(nsteps);
   vtx->step_t.resize(nsteps);
-  vtx->step_px.resize(nsteps);
-  vtx->step_py.resize(nsteps);
-  vtx->step_pz.resize(nsteps);
+  vtx->step_dx.resize(nsteps);
+  vtx->step_dy.resize(nsteps);
+  vtx->step_dz.resize(nsteps);
   vtx->step_ke.resize(nsteps);
   vtx->step_edep.resize(nsteps);
+  vtx->step_qedep.resize(nsteps);
   for (unsigned int i=0; i < nsteps; i++) {
       vtx->step_x[i] = x[i];
       vtx->step_y[i] = y[i];
       vtx->step_z[i] = z[i];
       vtx->step_t[i] = t[i];
-      vtx->step_px[i] = px[i];
-      vtx->step_py[i] = py[i];
-      vtx->step_pz[i] = pz[i];
+      vtx->step_dx[i] = dx[i];
+      vtx->step_dy[i] = dy[i];
+      vtx->step_dz[i] = dz[i];
       vtx->step_ke[i] = ke[i];
       vtx->step_edep[i] = edep[i];
+      vtx->step_qedep[i] = qedep[i];
   }
 }
 
 void get_steps(Vertex *vtx, unsigned int nsteps, double *x, double *y, double *z,
-        double *t, double *px, double *py, double *pz, double *ke, double *edep) {
+        double *t, double *dx, double *dy, double *dz, double *ke, double *edep, double *qedep) {
   for (unsigned int i=0; i < nsteps; i++) {
       x[i] = vtx->step_x[i];
       y[i] = vtx->step_y[i];
       z[i] = vtx->step_z[i];
       t[i] = vtx->step_t[i];
-      px[i] = vtx->step_px[i];
-      py[i] = vtx->step_py[i];
-      pz[i] = vtx->step_pz[i];
+      dx[i] = vtx->step_dx[i];
+      dy[i] = vtx->step_dy[i];
+      dz[i] = vtx->step_dz[i];
       ke[i] = vtx->step_ke[i];
       edep[i] = vtx->step_edep[i];
+      qedep[i] = vtx->step_qedep[i];
   }
 }
 
-void fill_channels(Event *ev, unsigned int nhit, unsigned int *ids, float *t,
-		   float *q, unsigned int *flags, unsigned int nchannels)
+void fill_channels(Event *ev, unsigned int nhit, unsigned int *hit_id, 
+           unsigned int nchannels, float *t, float *q, unsigned int *flags)
 {
-  ev->nhit = 0;
+  ev->nhit = nhit;
   ev->nchannels = nchannels;
-  ev->channels.resize(0);
+  ev->channels.resize(nhit);
 
-  Channel ch;
-  unsigned int id;
-  for (unsigned int i=0; i < nhit; i++) {
-      ev->nhit++;
-      id = ids[i];
-      ch.id = id;
-      ch.t = t[id];
-      ch.q = q[id];
-      ch.flag = flags[id];
-      ev->channels.push_back(ch);
+  for (unsigned int i = 0; i < nhit; i++) {
+      Channel *ch = &ev->channels[i];
+      unsigned int id = hit_id[i];
+      ch->id = id;
+      ch->t = t[id];
+      ch->q = q[id];
+      ch->flag = flags[id];
   }
 }
 
 void get_channels(Event *ev, int *hit, float *t, float *q, unsigned int *flags)
 {
-  for (unsigned int i=0; i < ev->nchannels; i++) {
-    hit[i] = 0;
-    t[i] = -1e9f;
-    q[i] = -1e9f;
-    flags[i] = 0;
-  }
-
-  unsigned int id;
   for (unsigned int i=0; i < ev->channels.size(); i++) {
-    id = ev->channels[i].id;
-
-    if (id < ev->nchannels) {
-      hit[id] = 1;
-      t[id] = ev->channels[i].t;
-      q[id] = ev->channels[i].q;
-      flags[id] = ev->channels[i].flag;
-    }
+    unsigned int id = ev->channels[i].id;
+    hit[id] = 1;
+    t[id] = ev->channels[i].t;
+    q[id] = ev->channels[i].q;
+    flags[id] = ev->channels[i].flag;
   }
 }
 

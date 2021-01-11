@@ -16,16 +16,17 @@ SCINTILLATION    = 0x1 << 11
 NAN_ABORT        = 0x1 << 31
 
 class Steps(object):
-    def __init__(self,x,y,z,t,px,py,pz,ke,edep):
+    def __init__(self,x,y,z,t,dx,dy,dz,ke,edep,qedep):
         self.x = x
         self.y = y
         self.z = z
         self.t = t
-        self.px = px
-        self.py = py
-        self.pz = pz
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
         self.ke = ke
         self.edep = edep
+        self.qedep = qedep
     
 
 class Vertex(object):
@@ -244,12 +245,15 @@ class Channels(object):
         self.flags = flags
         self.evidx = evidx
 
-    def hit_channels(self):
+    def hit_channels(self,return_flags=False):
         '''Extract a list of hit channels.
         
         Returns: array of hit channel IDs, array of hit times, array of charges on hit channels
         '''
-        return self.hit.nonzero()[0], self.t[self.hit], self.q[self.hit]
+        if return_flags:
+            return self.hit.nonzero()[0], self.t[self.hit], self.q[self.hit], self.flags[self.hit]
+        else:
+            return self.hit.nonzero()[0], self.t[self.hit], self.q[self.hit]
 
 class Event(object):
     def __init__(self, id=0, vertices=None, photons_beg=None, photons_end=None, photon_tracks=None, photon_parent_trackids=None, hits=None, flat_hits=None, channels=None):

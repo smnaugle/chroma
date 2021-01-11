@@ -158,7 +158,7 @@ pick_new_direction(float3 axis, float theta, float phi)
     float dirx = cos_theta*axis.x +
         sin_theta*(axis.z*cos_phi*cos_axis_phi - sin_phi*sin_axis_phi);
     float diry = cos_theta*axis.y +
-        sin_theta*(cos_phi*axis.z*sin_axis_phi - sin_phi*cos_axis_phi);
+        sin_theta*(cos_phi*axis.z*sin_axis_phi + sin_phi*cos_axis_phi);
     float dirz = cos_theta*axis.z - sin_theta*cos_phi*sin_axis_theta;
 
     return make_float3(dirx, diry, dirz);
@@ -265,6 +265,7 @@ int propagate_to_boundary(Photon &p, State &s, curandState &rng,
                 p.direction = uniform_sphere(&rng);
                 p.polarization = cross(uniform_sphere(&rng), p.direction);
                 p.polarization /= norm(p.polarization);
+                p.last_hit_triangle = -1;
                 p.history |= BULK_REEMIT;
                 return CONTINUE;
             } // photon is reemitted isotropically

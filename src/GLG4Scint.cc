@@ -104,6 +104,7 @@ G4int GLG4Scint::maxTracksPerStep           = 180000;
 G4double GLG4Scint::meanPhotonsPerSecondary = 1.0;
 G4bool   GLG4Scint::doScintillation         = true;
 G4double GLG4Scint::totEdep                 = 0.0;
+G4double GLG4Scint::lastEdep_quenched       = 0.0;
 G4double GLG4Scint::totEdep_quenched        = 0.0;
 G4double GLG4Scint::totEdep_time            = 0.0;
 G4ThreeVector GLG4Scint::scintCentroidSum(0.0, 0.0, 0.0);
@@ -118,21 +119,18 @@ DummyProcess GLG4Scint::scintProcess("Scintillation", fUserDefined);
 GLG4Scint::GLG4Scint(const G4String& tablename, G4double lowerMassLimit) {
     verboseLevel = 0;
     myLowerMassLimit = lowerMassLimit;
-
+    
     myPhysicsTable = MyPhysicsTable::FindOrBuild(tablename);
     myPhysicsTable->IncUsedBy();
 
     if (verboseLevel) myPhysicsTable->Dump();
 
-    // Add to ordered list
-    if ((masterVectorOfGLG4Scint.size() == 0) ||
-        (lowerMassLimit >= masterVectorOfGLG4Scint.back()->myLowerMassLimit)) {
+    // Add to ordered list (largest minimum mass first)
+    if ((masterVectorOfGLG4Scint.size() == 0) || (lowerMassLimit < masterVectorOfGLG4Scint.back()->myLowerMassLimit)) {
         masterVectorOfGLG4Scint.push_back(this);
     } else {
-        for (std::vector<GLG4Scint *>::iterator i = masterVectorOfGLG4Scint.begin();
-             i != masterVectorOfGLG4Scint.end();
-             i++) {
-            if (lowerMassLimit < (*i)->myLowerMassLimit) {
+        for (std::vector<GLG4Scint *>::iterator i = masterVectorOfGLG4Scint.begin(); i != masterVectorOfGLG4Scint.end(); i++) {
+            if (lowerMassLimit > (*i)->myLowerMassLimit) {
                 masterVectorOfGLG4Scint.insert(i, this);
                 break;
             }
@@ -206,7 +204,7 @@ void GLG4Scint::SetQuenchingFactor(G4double qf = 1.0) {
 // distributed evenly along the track segment and uniformly into 4pi.
 G4VParticleChange *
 GLG4Scint::PostPostStepDoIt(const G4Track& aTrack, const G4Step& aStep) {
-
+    
     // prepare to generate an event, organizing to
     // check for things that cause an early exit.
     aParticleChange.Initialize(aTrack);
@@ -274,13 +272,12 @@ GLG4Scint::PostPostStepDoIt(const G4Track& aTrack, const G4Step& aStep) {
     // Track total edep, quenched edep
     totEdep          += TotalEnergyDeposit;
     totEdep_quenched += QuenchedTotalEnergyDeposit;
+    lastEdep_quenched = QuenchedTotalEnergyDeposit;
     totEdep_time      = t0;
     scintCentroidSum + QuenchedTotalEnergyDeposit * (x0 + p0 * (0.5 * aStep.GetStepLength()));
-
-
+    
     // Calculate MeanNumPhotons
     G4double MeanNumPhotons = (ScintillationYield * GetQuenchingFactor() * QuenchedTotalEnergyDeposit * (1.0 + birksConstant * (physicsEntry->ref_dE_dx)));
-    //std::cout << "Generated photons: " << MeanNumPhotons << std::cout;
 
     if (MeanNumPhotons <= 0.0) {
         return &aParticleChange;
@@ -422,8 +419,7 @@ GLG4Scint::PostPostStepDoIt(const G4Track& aTrack, const G4Step& aStep) {
 G4VParticleChange * GLG4Scint::GenericPostPostStepDoIt(const G4Step *pStep) {
     G4Track *track = pStep->GetTrack();
     G4double mass  = track->GetDynamicParticle()->GetMass();
-
-    // FIXME - what does this do?
+    // Choose the set of properties with the largest minimum mass less than this mass
     for (size_t i = 0; i < masterVectorOfGLG4Scint.size(); i++) {
         if (mass > masterVectorOfGLG4Scint[i]->myLowerMassLimit) {
             return masterVectorOfGLG4Scint[i]->PostPostStepDoIt(*track, *pStep);
@@ -592,6 +588,8 @@ void GLG4Scint::MyPhysicsTable::Entry::Build(
         return;
     }
 
+    //aMaterialPropertiesTable->DumpTable();
+
     // Retrieve vector of scintillation wavelength intensity
     // for the material from the material's optical
     // properties table ("SCINTILLATION")
@@ -603,23 +601,25 @@ void GLG4Scint::MyPhysicsTable::Entry::Build(
         aMaterialPropertiesTable->GetProperty(property_string.str().c_str());
 
     if (theScintillationLightVector) {
-        if (aMaterialPropertiesTable->ConstPropertyExists("LIGHT_YIELD")) light_yield = aMaterialPropertiesTable->GetConstProperty("LIGHT_YIELD");
-        else {
-            G4cout << "\nWarning! Found a scintillator without LIGHT_YIELD parameter.";
-            G4cout << "\nI will assume that for this material this parameter is ";
-            G4cout << "implicit in the scintillation integral..." << G4endl;
-        }
-
         // find the integral
-        if (theScintillationLightVector == NULL) spectrumIntegral = NULL;
-        else spectrumIntegral = Integrate_MPV_to_POFV(theScintillationLightVector);
-
+        if (theScintillationLightVector == NULL) {
+            spectrumIntegral = NULL;
+        } else {
+            spectrumIntegral = Integrate_MPV_to_POFV(theScintillationLightVector);
+        }
         I_own_spectrumIntegral = true;
-    }
-    else {
+    } else {
         // Use default integral (possibly null)
         spectrumIntegral       = MyPhysicsTable::GetDefault()->GetEntry(i)->spectrumIntegral;
         I_own_spectrumIntegral = false;
+    }
+    
+    property_string.str("");
+    property_string << "LIGHT_YIELD" << _name;
+    if (aMaterialPropertiesTable->ConstPropertyExists(property_string.str().c_str())) {
+        light_yield = aMaterialPropertiesTable->GetConstProperty(property_string.str().c_str());
+    } else {
+        light_yield = MyPhysicsTable::GetDefault()->GetEntry(i)->light_yield;
     }
 
     // Retrieve vector of scintillation time profile

@@ -52,10 +52,10 @@ def root_vertex_to_python_vertex(vertex):
         n = len(vertex.step_x)
         steps = event.Steps(np.empty(n),np.empty(n),np.empty(n),np.empty(n),
               np.empty(n),np.empty(n),np.empty(n),
-              np.empty(n),np.empty(n))
+              np.empty(n),np.empty(n),np.empty(n))
         ROOT.get_steps(vertex,n,steps.x,steps.y,steps.z,steps.t,
-                       steps.px,steps.py,steps.pz,
-                       steps.ke,steps.edep)
+                       steps.dx,steps.dy,steps.dz,
+                       steps.ke,steps.edep,steps.qedep)
     else:
         steps = None
     if len(vertex.children) > 0:
@@ -85,8 +85,8 @@ def python_vertex_to_root_vertex(pvertex,rvertex):
     rvertex.pdgcode = pvertex.pdgcode
     if pvertex.steps:
         ROOT.fill_steps(rvertex,len(pvertex.steps.x),pvertex.steps.x,pvertex.steps.y,pvertex.steps.z,
-                        pvertex.steps.t,pvertex.steps.px,pvertex.steps.py,pvertex.steps.pz,
-                        pvertex.steps.ke,pvertex.steps.edep)
+                        pvertex.steps.t,pvertex.steps.dx,pvertex.steps.dy,pvertex.steps.dz,
+                        pvertex.steps.ke,pvertex.steps.edep,pvertex.steps.qedep)
     else:
         nil = np.empty(0,dtype=np.float64)
         ROOT.clear_steps(rvertex)
@@ -150,7 +150,7 @@ def root_event_to_python_event(ev):
         pyev.photon_tracks = photon_tracks
         pyev.photon_parent_trackids = np.asarray(ev.photon_parent_trackids).copy()    
     
-    
+    # hits
     if ev.hits.size() > 0:
         pyev.hits = {}
         for hit in ev.hits:
@@ -163,6 +163,18 @@ def root_event_to_python_event(ev):
                           photons.last_hit_triangles, photons.flags,
                           photons.channel)
             pyev.hits[hit.first] = photons
+
+    # flat_hits
+    if ev.flat_hits.size() > 0:
+        photons = make_photon_with_arrays(ev.flat_hits.size())
+        ROOT.get_photons(ev.flat_hits,
+                      photons.pos.ravel(),
+                      photons.dir.ravel(),
+                      photons.pol.ravel(),
+                      photons.wavelengths, photons.t,
+                      photons.last_hit_triangles, photons.flags,
+                      photons.channel)
+        pyev.flat_hits = photons
 
     # photon end
     if ev.photons_end.size() > 0:
@@ -180,10 +192,10 @@ def root_event_to_python_event(ev):
 
     # channels
     if ev.nchannels > 0:
-        hit = np.empty(ev.nchannels, dtype=np.int32)
-        t = np.empty(ev.nchannels, dtype=np.float32)
-        q = np.empty(ev.nchannels, dtype=np.float32)
-        flags = np.empty(ev.nchannels, dtype=np.uint32)
+        hit = np.zeros(ev.nchannels, dtype=np.int32)
+        t = np.zeros(ev.nchannels, dtype=np.float32)
+        q = np.zeros(ev.nchannels, dtype=np.float32)
+        flags = np.zeros(ev.nchannels, dtype=np.uint32)
 
         ROOT.get_channels(ev, hit, t, q, flags)
         pyev.channels = event.Channels(hit.astype(bool), t, q, flags)
@@ -292,7 +304,7 @@ class RootWriter(object):
     def write_event(self, pyev):
         "Write an event.Event object to the ROOT tree as a ROOT.Event object."
         self.ev.id = pyev.id
-
+        
         if pyev.photons_beg is not None:
             photons = pyev.photons_beg
             ROOT.fill_photons(self.ev.photons_beg,
@@ -357,7 +369,7 @@ class RootWriter(object):
                               photons.channel)
         else:
             self.ev.hits.clear()
-            
+        
         if pyev.flat_hits is not None:
             photons = pyev.flat_hits
             ROOT.fill_photons(self.ev.flat_hits,
@@ -372,17 +384,21 @@ class RootWriter(object):
             self.ev.flat_hits.resize(0)
         
         if pyev.channels is not None:
-            nhit = count_nonzero(pyev.channels.hit)
-            if nhit > 0:
-                ROOT.fill_channels(self.ev, nhit, np.arange(len(pyev.channels.t))[pyev.channels.hit].astype(np.uint32), pyev.channels.t, pyev.channels.q, pyev.channels.flags, len(pyev.channels.hit))
+            hit_channels = pyev.channels.hit.nonzero()[0].astype(np.uint32)
+            if len(hit_channels) > 0:
+                ROOT.fill_channels(self.ev, len(hit_channels), hit_channels, 
+                                   len(pyev.channels.hit), 
+                                   pyev.channels.t.astype(np.float32), 
+                                   pyev.channels.q.astype(np.float32), 
+                                   pyev.channels.flags.astype(np.uint32))
             else:
                 self.ev.nhit = 0
+                self.ev.nchannels = 0
                 self.ev.channels.resize(0)
-                self.ev.nchannels = len(pyev.channels.hit)
         else:
             self.ev.nhit = 0
-            self.ev.channels.resize(0)
             self.ev.nchannels = 0
+            self.ev.channels.resize(0)
 
         self.T.Fill()
 
