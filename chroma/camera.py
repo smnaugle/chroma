@@ -876,7 +876,7 @@ class EventViewer(Camera):
                 self.gpu_geometries.append(gpu_geometry)
     
     def render_mc_info_all_events(self):
-        #function added by Sam to visualize all events in a root file at the same time
+        #function added to visualize all events in a root file at the same time
         self.gpu_geometries = [self.gpu_geometry]
         for i, ev in enumerate(self.rr):
             print('Evaluating event %i' %i)
@@ -911,7 +911,7 @@ class EventViewer(Camera):
                     scintillation = scintillation[selector]
                     reemission = reemission[selector]
                 nphotons = len(tracks)
-                prob = self.photons_max/nphotons if self.photons_max is not None and nphotons is not 0 else 1.0 #Sam added and nphotons is not 0
+                prob = self.photons_max/nphotons if self.photons_max is not None and nphotons is not 0 else 1.0
                 selector = np.random.random(len(tracks)) < prob
                 nphotons = np.count_nonzero(selector)
                 for i,track in ((i,t) for i,(s,t) in enumerate(zip(selector,tracks)) if s):
