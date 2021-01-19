@@ -1062,7 +1062,6 @@ class EventViewer(Camera):
                 self.render_mc_info()
                 self.update()
                 return
-            #added by Sam to enable looking at multiple events
             elif event.key == K_o:
                 self.render_mc_info_all_events()
                 self.update()
