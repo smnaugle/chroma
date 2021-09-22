@@ -731,6 +731,10 @@ void GLG4Scint::MyPhysicsTable::Entry::Build(
                        << "in SCINTMOD" << _name << G4endl;
             }
         }
+	//added by Sam 9-22-21
+	G4cout<<"resolution scale"<<resolutionScale << G4endl;
+    	G4cout<<"birks coeff"<<birksConstant << G4endl;
+    	G4cout<<"ref dE_dx"<<ref_dE_dx << G4endl;
     }
 
     property_string.str("");
