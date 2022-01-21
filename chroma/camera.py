@@ -647,9 +647,11 @@ class Camera(multiprocessing.Process):
         pygame.init()
         print('after pygame init')
         self.window = pygame.display.set_mode(self.size)
+        print('after window init')
         self.screen = pygame.Surface(self.size, pygame.SRCALPHA)
+        print('after screen init')
         pygame.display.set_caption('')
-        print('after screen caption')
+        print('after caption')
         self.init_gpu()
         #makes things significantly faster somehow
         self.rotate(0.001,[1/np.sqrt(2),0,1/np.sqrt(2)])
