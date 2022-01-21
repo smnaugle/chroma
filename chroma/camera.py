@@ -645,17 +645,12 @@ class Camera(multiprocessing.Process):
 
     def run(self):
         pygame.init()
-        print('after pygame init')
         self.window = pygame.display.set_mode(self.size)
-        print('after window init')
         self.screen = pygame.Surface(self.size, pygame.SRCALPHA)
-        print('after screen init')
         pygame.display.set_caption('')
-        print('after caption')
         self.init_gpu()
         #makes things significantly faster somehow
         self.rotate(0.001,[1/np.sqrt(2),0,1/np.sqrt(2)])
-        print('after gpu init')
         if self.spnav:
             try:
                 wm_info = pygame.display.get_wm_info()
@@ -665,9 +660,7 @@ class Camera(multiprocessing.Process):
                 #print 'Space Navigator support enabled.'
             except:
                 self.spnav = False
-        print('after spnav')
         self.update()
-        print('after update')
         self.done = False
         self.clicked = False
 
