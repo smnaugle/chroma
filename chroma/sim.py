@@ -75,13 +75,11 @@ class Simulation(object):
             print('GPU copy took %0.2f s' % (t_copy_end-t_copy_start))
         
         t_prop_start = timer()
-        print('starting photon prop')
         tracking = gpu_photons.propagate(self.gpu_geometry, self.rng_states,
                               nthreads_per_block=self.nthreads_per_block,
                               max_blocks=self.max_blocks,
                               max_steps=max_steps,track=self.photon_tracking)
             
-        print('done with photon prop')
         t_prop_end = timer()
         if verbose:
             print('GPU propagate took %0.2f s' % (t_prop_end-t_prop_start))

@@ -223,7 +223,6 @@ class GPUPhotons(object):
             step_photons.append(self.copy_queue(input_queue_gpu[1:],nphotons).get())
 
         while step < max_steps:
-            print('Stepping photons')
             # Just finish the rest of the steps if the # of photons is low and not tracking
             if not track and (nphotons < nthreads_per_block * 16 * 8 or use_weights):
                 nsteps = max_steps - step
