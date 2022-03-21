@@ -645,24 +645,40 @@ class Camera(multiprocessing.Process):
 
     def run(self):
         pygame.init()
+        print('here1')
         self.window = pygame.display.set_mode(self.size)
+        print('here2')
         self.screen = pygame.Surface(self.size, pygame.SRCALPHA)
+        print('here3')
         pygame.display.set_caption('')
+        print('here4')
         self.init_gpu()
+        print('here5')
         #makes things significantly faster somehow
         self.rotate(0.001,[1/np.sqrt(2),0,1/np.sqrt(2)])
+        print('here6')
         if self.spnav:
+            print('here7')
             try:
+                print('here8')
                 wm_info = pygame.display.get_wm_info()
+                print('here9')
                 self.spnav_module.spnav_x11_open(wm_info['display'],
                                                  wm_info['window'])
+                print('here10')
                 pygame.event.set_allowed(pygame.SYSWMEVENT)
+                print('here11')
                 #print 'Space Navigator support enabled.'
             except:
+                print('here12')
                 self.spnav = False
+                print('here13')
         self.update()
+        print('here14')
         self.done = False
+        print('here15')
         self.clicked = False
+        print('here16')
 
         while not self.done:
             self.clock.tick(20)
