@@ -1,10 +1,18 @@
+print('here1')
 import os, os.path
+print('here2')
 import shutil
+print('here3')
 import numpy as np
+print('here4')
 import chroma.event as event
+print('here5')
 from chroma.tools import count_nonzero
+print('here6')
 from chroma.rootimport import ROOT
+print('here7')
 import array
+print('here8')
 
 # Check if we have already imported the ROOT class due to a user's
 # rootlogon.C script
