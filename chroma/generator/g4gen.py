@@ -47,6 +47,7 @@ def create_g4material(material):
     add_prop(prop_table,'SCINTILLATION',material,'scintillation_spectrum',option='dy_dwavelength')
     add_prop(prop_table,'SCINTWAVEFORM',material,'scintillation_waveform') #could be a PDF but this requires time constants
     add_prop(prop_table,'SCINTMOD',material,'scintillation_mod')
+    add_prop(prop_table,'SCINT_RISE_TIME',material,'scintillation_rise_time')
     if 'scintillation_light_yield' in material.__dict__:
         data = material.scintillation_light_yield 
         if data is not None:
