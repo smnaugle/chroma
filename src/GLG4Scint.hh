@@ -1,32 +1,24 @@
-////////////////////////////////////////////////////////////////////
 #ifndef GLG4Scint_h
 #define GLG4Scint_h 1
-/*
+
+/** @file GLG4Scint.hh
     Declares GLG4Scint class and helpers.
 
     This file is part of the GenericLAND software library.
+    $Id: GLG4Scint.hh,v 1.2 2006/03/08 03:52:41 volsung Exp $
 
-    Author: Glenn Horton-Smith (Tohoku) 28-Jan-1999
-
-    Revision History:
-      13 Nov 2014: Matt Strait - Fixed shadowed variable warning
-      13 May 2015: W. Heintzelman - Modify ResetPhotonCount to allow setting to
-                   non-zero values; correct error in GetScintillatedCount.
-      29 Feb 2016: W Heintzelman - Add functions: GetTotEdepall, SetTotEdep
-      23 Oct 2016: N Barros - Added UserTrackInformation objects to secondary particles
-                              to track the process history of the photons.
-*/
+    @author Glenn Horton-Smith (Tohoku) 28-Jan-1999
+ */
 
 // [see detailed class documentation below]
 
-/////////////
+// ///////////
 // Includes
-/////////////
+// ///////////
 
 #include "globals.hh"
 #include "templates.hh"
 #include "vector"
-#include "list"
 #include "G4ThreeVector.hh"
 #include "G4ParticleMomentum.hh"
 #include "G4Step.hh"
@@ -40,58 +32,23 @@
 #include "G4UImessenger.hh"
 
 #include "G4VProcess.hh"
+#include "DummyProcess.hh"
 
-// Dummy classes used as placeholders in new opticalphoton tracks so
-// that G4Track users can figure out the name of the process which
-// created the track.
-class GLG4DummyProcess : public G4VProcess {
-public:
-  GLG4DummyProcess(const G4String &aName = "NoName", G4ProcessType aType = fNotDefined)
-    : G4VProcess(aName, aType) { };
-
-  // Bogus, not a real process
-  virtual G4double AlongStepGetPhysicalInteractionLength(
-                             const G4Track& /*track*/,
-                              G4double  /*previousStepSize*/,
-                             G4double  /*currentMinimumStep*/,
-                             G4double& /*proposedSafety*/,
-                             G4GPILSelection* /*selection*/) { return 0; };
-
-  virtual G4double AtRestGetPhysicalInteractionLength(
-                              const G4Track& /*track*/,
-                              G4ForceCondition* /*condition*/) { return 0; };
-
-  virtual G4double PostStepGetPhysicalInteractionLength(
-                            const G4Track& /*track*/,
-                            G4double   /*previousStepSize*/,
-                            G4ForceCondition* /*condition*/) { return 0; };
-
-  virtual G4VParticleChange* PostStepDoIt(
-                      const G4Track& /*track*/,
-                      const G4Step&  /*stepData*/) { return 0; };
-
-  virtual G4VParticleChange* AlongStepDoIt(
-                       const G4Track& /*track*/,
-                       const G4Step& /*stepData*/ ) { return 0; };
-  virtual G4VParticleChange* AtRestDoIt(
-                    const G4Track& /*track*/,
-                    const G4Step& /*stepData*/) { return 0; };
-};
-
+#include "G4hParametrisedLossModel.hh"
 
 class G4UIcommand;
 class G4UIdirectory;
 
-/////////////////////
+// ///////////////////
 // Class Definition
-/////////////////////
+// ///////////////////
 
-/*
-  GLG4Scint is an extremely modified version of the G4Scintillation
-  process, so much so that it's not even a G4Process anymore!
-  Features include arbitrary scintillation light time profile and
-  spectra, Birks' law, particle-dependent specification of all
-  parameters, and reemission of optical photons killed by other processes.
+/**
+   GLG4Scint is an extremely modified version of the G4Scintillation
+   process, so much so that it's not even a G4Process anymore!
+   Features include arbitrary scintillation light time profile and
+   spectra, Birks' law, particle-dependent specification of all
+   parameters.
 
     - Has a GenericPostPostStepDoIt() function (note two "Post"s)
       instead of a PostStepDoIt() function.  GenericPostPostStepDoIt()
@@ -162,250 +119,243 @@ class G4UIdirectory;
       tracked opticalphotons.  Opticalphotons are thus macro-particles in
       the high-scintillation case.  The code preserves an integer number
       of real photons per macro-particle.
-*/
+ */
 
-class GLG4Scint
-  : public G4UImessenger // not creating a separate class is my laziness -GHS.
-{
+class GLG4Scint : public G4UImessenger {
+public:
+
+    class MyPhysicsTable {
+public:
+
+        class Entry {
+public:
+
+            Entry();
+            ~Entry();
+            void Build(const G4String           & name,
+                       int                        material_index,
+                       G4MaterialPropertiesTable *matprops);
+
+            G4PhysicsOrderedFreeVector *spectrumIntegral;
+            G4PhysicsOrderedFreeVector *timeIntegral;
+            bool I_own_spectrumIntegral, I_own_timeIntegral;
+            bool HaveTimeConsts;
+            G4double resolutionScale;
+            G4double birksConstant;
+            G4double DMsConstant; // for Dongming et al. QF
+            G4double ref_dE_dx;
+            G4double light_yield;
+            G4MaterialPropertyVector *QuenchingArray;
+        };
+
+        static MyPhysicsTable*       FindOrBuild(const G4String& name);
+        static const MyPhysicsTable* GetDefault(void) {
+            return head;
+        }
+
+        void IncUsedBy(void) {
+            ++used_by_count;
+        }
+
+        void DecUsedBy(void) {
+            if (--used_by_count <= 0) delete this;
+        }
+
+        const Entry* GetEntry(int i) const {
+            if (i >= length) return NULL;
+            return data + i;
+        }
+
+        void Dump(void) const;
+
+        G4String *name;
 
 private:
 
-//////////////
-// Operators
-//////////////
-
-// GLG4Scint& operator=(const GLG4Scint &right);
-
-public:
-
-///////////////
-// Nested class
-////////////////
-
- class MyPhysicsTable {
-   public:
-      G4String*  fName;
-      class Entry {
-        public:
-          G4PhysicsOrderedFreeVector*  fSpectrumIntegral;
-          G4PhysicsOrderedFreeVector*  fReemissionIntegral;
-          G4PhysicsOrderedFreeVector*  fTimeIntegral;
-          G4PhysicsOrderedFreeVector*  fReemissionTimeIntegral;
-          G4std::vector<G4PhysicsOrderedFreeVector*> fReemissionTimeVector;
-          G4std::vector<G4PhysicsOrderedFreeVector*> fReemissionSpectrumVector;
-          int fOwnSpectrumIntegral, fOwnTimeIntegral, fOwnReemissionTimeIntegral, fOwnReemissionTimeVector;
-          G4double         fResolutionScale;
-          G4double         fBirksConstant;
-          G4double         fRefdEdx;
-          G4double         fLightYield;
-           G4MaterialPropertyVector* fQuenchingArray;
-
-         Entry();
-         ~Entry();
-
-         void Build(const G4String& name, int material_index, G4MaterialPropertiesTable *matprops);
-      };
-
-      private:
-        static MyPhysicsTable *fHead;
-        MyPhysicsTable*  fNext;
-        G4int            fUsedByCount;
-
-        Entry* fData;
-        G4int  fLength;
-
+        friend class GLG4Scint;
         MyPhysicsTable();
         ~MyPhysicsTable();
-
         void Build(const G4String& newname);
 
-        friend class GLG4Scint;
+        MyPhysicsTable *next;
+        G4int  used_by_count;
+        Entry *data;
+        G4int  length;
 
-      public:
-        static MyPhysicsTable* FindOrBuild(const G4String& name);
-        static const MyPhysicsTable* GetDefault(void) { return fHead; }
-        void IncUsedBy(void) { ++fUsedByCount; }
-        void DecUsedBy(void) { if (--fUsedByCount <= 0) delete this; }
-        const Entry * GetEntry(int i) const { return fData+i; }
-        void Dump(void) const;
- };
+        static MyPhysicsTable *head;
+    };
 
- ////////////////////////////////
- // Constructors and Destructor
- ////////////////////////////////
+    // //////////////////////////////
+    // Constructors and Destructor
+    // //////////////////////////////
 
- GLG4Scint(const G4String& tableName= "",G4double lowerMassLimit= 0.0);
+    GLG4Scint(const G4String& tableName = "",
+              G4double        lowerMassLimit = 0.0);
+    ~GLG4Scint();
 
- // GLG4Scint(const GLG4Scint &right);
+    // //////////
+    // Methods
+    // //////////
 
- ~GLG4Scint();
+    G4VParticleChange* PostPostStepDoIt(const G4Track& aTrack,
+                                        const G4Step & aStep);
+    G4double           GetLowerMassLimit(void) const;
+    void               DumpInfo() const;
+    MyPhysicsTable*    GetMyPhysicsTable(void) const;
+    G4int              GetVerboseLevel(void) const;
+    void               SetVerboseLevel(G4int level);
 
- ////////////
- // Methods
- ////////////
+    // Methods are for G4UImessenger
+    void               SetNewValue(G4UIcommand *command,
+                                   G4String     newValues);
+    G4String           GetCurrentValue(G4UIcommand *command);
 
-  G4VParticleChange* PostPostStepDoIt(const G4Track& aTrack, const G4Step&  aStep);
+    // //////////////
+    // static methods
+    // //////////////
 
-  G4double GetLowerMassLimit(void) const;
+    static G4VParticleChange* GenericPostPostStepDoIt(const G4Step *pStep);
 
-  void DumpInfo() const;
+    // For energy deposition diagnosis
+    static void               ResetTotEdep() {
+        totEdep           = totEdep_quenched = totEdep_time = 0.0;
+        scintCentroidSum *= 0.0;
+    }
 
-  MyPhysicsTable*  GetMyPhysicsTable(void) const;
+    static G4double GetTotEdep() {
+        return totEdep;
+    }
 
-  G4int GetVerboseLevel(void) const;
-  void  SetVerboseLevel(int level);
+    static G4double GetLastEdepQuenched() {
+        return lastEdep_quenched;
+    }
 
-  // following two methods are for G4UImessenger
-  void SetNewValue(G4UIcommand * command,G4String newValues);
-  G4String GetCurrentValue(G4UIcommand * command);
+    static G4double GetTotEdepQuenched() {
+        return totEdep_quenched;
+    }
 
- ////////////////
- // static methods
- ////////////////
+    static G4double GetTotEdepTime() {
+        return totEdep_time;
+    }
 
-  static G4VParticleChange* GenericPostPostStepDoIt(const G4Step *pStep);
+    static G4bool GetDoScintillation() {
+        return doScintillation;
+    }
 
-  // following are for energy deposition diagnosis
-  static unsigned int fsScintillatedCount;
-  static unsigned int fsReemittedCount;
-  static void ResetPhotonCount(unsigned int sCt=0, unsigned int rCt=0)
-                      { fsScintillatedCount = sCt; fsReemittedCount = rCt; }
-  static unsigned int GetScintillatedCount() { return fsScintillatedCount; }
-  static unsigned int GetReemittedCount() { return fsReemittedCount; }
+    static G4ThreeVector GetScintCentroid() {
+        return scintCentroidSum * (1.0 / totEdep_quenched);
+    }
 
-  static void GetTotEdepAll( G4double& totEdep, G4double& totEdepQuenched,
-                  G4double& totEdepTime, G4ThreeVector&  scintCentroidSum ) {
-      totEdep = fTotEdep ;
-      totEdepQuenched = fTotEdepQuenched ;
-      totEdepTime = fTotEdepTime ;
-      scintCentroidSum = fScintCentroidSum ;
-  }
+protected:
 
-  static void SetTotEdep( G4double& totEdep, G4double& totEdepQuenched,
-                  G4double& totEdepTime, G4ThreeVector&  scintCentroidSum ) {
-      fTotEdep = totEdep ;
-      fTotEdepQuenched = totEdepQuenched ;
-      fTotEdepTime = totEdepTime ;
-      fScintCentroidSum = scintCentroidSum ;
-  }
-
-  static void ResetTotEdep() {
-      fTotEdep = fTotEdepQuenched = fTotEdepTime = 0.0;
-      fScintCentroidSum *= 0.0;
-  }
-  static G4double GetTotEdep() { return fTotEdep; }
-  static G4double GetTotEdepQuenched() { return fTotEdepQuenched; }
-  static G4double GetTotEdepTime() { return fTotEdepTime; }
-  static G4bool GetDoScintillation() { return fDoScintillation; }
-  static G4ThreeVector GetScintCentroidSum() {
-      return fScintCentroidSum*(1.0/fTotEdepQuenched);
-  }
-
-  ///////////////////////
-  // Class Data Members
-  ///////////////////////
-
- protected:
-     int fVerboseLevel;
+    int verboseLevel;
 
     // Below is the pointer to the physics table which this instance
     // of GLG4Scint will use.  You may create a separate instance
     // of GLG4Scint for each particle, if you like.
-    MyPhysicsTable *  fMyPhysicsTable;
+    MyPhysicsTable *myPhysicsTable;
 
-     // below is the lower mass limit for this instance of GLG4Scint
-     G4double fLowerMassLimit;
+    // below is the lower mass limit for this instance of GLG4Scint
+    G4double myLowerMassLimit;
 
-     // return value of PostPostStepDoIt
-     G4ParticleChange fAParticleChange;
+    // return value of PostPostStepDoIt
+    G4ParticleChange aParticleChange;
 
-     ////////////////
-     // static variables
-     ////////////////
+    // //////////////
+    // static variables
+    // //////////////
 
-     // vector of all existing GLG4Scint objects.
-     // They register themselves when created,
-     // remove themselves when deleted.
-     // Used by GenericPostPostStepDoIt
-     static G4std::vector<GLG4Scint *> fMasterVectorOfGLG4Scint;
+    // vector of all existing GLG4Scint objects.
+    // They register themselves when created,
+    // remove themselves when deleted.
+    // Used by GenericPostPostStepDoIt
+    static std::vector<GLG4Scint *> masterVectorOfGLG4Scint;
 
-     // top level of scintillation command
-     static G4UIdirectory* fGLG4ScintDir;
+    // top level of scintillation command
+    static G4UIdirectory *GLG4ScintDir;
 
-     // universal maximum number of secondary tracks per step for GLG4Scint
-     static G4int fMaxTracksPerStep;
+    // universal maximum number of secondary tracks per step for GLG4Scint
+    static G4int maxTracksPerStep;
 
-     // universal mean number of true photons per secondary track in GLG4Scint
-     static G4double fMeanPhotonsPerSecondary;
+    // universal mean number of true photons per secondary track in GLG4Scint
+    static G4double meanPhotonsPerSecondary;
 
-     // universal on/off flag
-     static G4bool fDoScintillation;
+    // universal on/off flag
+    static G4bool doScintillation;
 
-     // on/off flag for absorbed opticalphoton reemission
-     static G4bool fDoReemission;
+    // total real energy deposited and total quenched energy deposited
+    static G4double totEdep;
+    static G4double lastEdep_quenched;
+    static G4double totEdep_quenched;
+    static G4double totEdep_time;
+    static G4ThreeVector scintCentroidSum;
 
-     // total real energy deposited and total quenched energy deposited
-     static G4double fTotEdep;
-     static G4double fTotEdepQuenched;
-     static G4double fTotEdepTime;
-     static G4ThreeVector fScintCentroidSum;
+    // Bogus processes used to tag photons created in GLG4Scint
+    static DummyProcess scintProcess;
 
-     // Bogus processes used to tag photons created in GLG4Scint
-     static GLG4DummyProcess fScintProcess;
-     static GLG4DummyProcess fReemissionProcess;
-     static std::list<GLG4DummyProcess*> fReemissionProcessVector;
+    // Quenching Factor
+    static G4double QuenchingFactor;
 
-      //Quenching Factor
-      static G4double fQuenchingFactor;
-      //user-given (constant) quenching factor flag
-      static G4bool fUserQF;
-      static G4String fPrimaryName;
-      //primary particle energy
-      static G4double fPrimaryEnergy;
+    // User-given (constant) quenching factor flag
+    static G4bool UserQF;
 
- public:
-      //methods to access the Quenching Factor
-      static G4double GetQuenchingFactor(){ return fQuenchingFactor; }
-      static void SetQuenchingFactor(G4double qf);
-      //methods for getting/setting info for the QF calculation
-      static G4double GetPrimaryEnergy(){ return fPrimaryEnergy; }
-      static void SetPrimaryEnergy(G4double pe){ fPrimaryEnergy=pe;}
-      static G4String GetPrimaryName(){ return fPrimaryName; }
-      static void SetPrimaryName(G4String pn){ fPrimaryName=pn;}
+    // precision goal for the iterative time delay
+    static double TimePrecGoal;
 
+    // maximum number of iterations before giving up time delay refinement
+    static int maxiter;
+
+public:
+
+    // methods to access the Quenching Factor
+    static G4double GetQuenchingFactor() {
+        return QuenchingFactor;
+    }
+
+    static void SetQuenchingFactor(G4double qf);
+
+    static G4double GetTimePrecGoal() {
+        return TimePrecGoal;
+    }
+
+    static void SetTimePrecGoal(double prec);
+    static int  GetMaxIter() {
+        return maxiter;
+    }
+
+    static void SetMaxIter(int maxit) {
+        maxiter = maxit;
+    }
 };
 
-////////////////////
+// //////////////////
 // Inline methods
-////////////////////
+// //////////////////
 
-inline
-GLG4Scint::MyPhysicsTable * GLG4Scint::GetMyPhysicsTable() const
-{
-  return fMyPhysicsTable;
+inline GLG4Scint::MyPhysicsTable * GLG4Scint::GetMyPhysicsTable() const {
+    return myPhysicsTable;
 }
 
-inline
-void GLG4Scint::DumpInfo() const
-{
-  if (fMyPhysicsTable) {
-    G4cout << "GLG4Scint[" << *(fMyPhysicsTable->fName) << "] {\n"
-           << "  fLowerMassLimit=" << fLowerMassLimit << G4endl;
-    if (fVerboseLevel >= 2)
-      fMyPhysicsTable->Dump();
+inline void GLG4Scint::DumpInfo() const {
+    G4cout << "GLG4Scint[" << *(myPhysicsTable->name) << "] {\n"
+           << "  myLowerMassLimit=" << myLowerMassLimit << G4endl;
+
+    if (myPhysicsTable) {
+        if (verboseLevel >= 2) myPhysicsTable->Dump();
+    }
     G4cout << "}" << G4endl;
-  }
 }
 
-inline
-G4double GLG4Scint::GetLowerMassLimit(void) const
-{
-  return fLowerMassLimit;
+inline G4double GLG4Scint::GetLowerMassLimit() const {
+    return myLowerMassLimit;
 }
 
-inline void GLG4Scint::SetVerboseLevel(int level) { fVerboseLevel= level; }
-inline G4int GLG4Scint::GetVerboseLevel(void) const { return fVerboseLevel; }
+inline void GLG4Scint::SetVerboseLevel(int level) {
+    verboseLevel = level;
+}
 
+inline G4int GLG4Scint::GetVerboseLevel() const {
+    return verboseLevel;
+}
 
-
-#endif /* GLG4Scint_h */
+#endif // GLG4Scint_h
