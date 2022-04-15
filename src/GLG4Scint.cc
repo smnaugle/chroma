@@ -677,7 +677,8 @@ void GLG4Scint::MyPhysicsTable::Entry::Build(
                    		ival[ii] += ampl*(decy*(1.0-exp(-tval[ii]/decy))+rise_time*(exp(-tval[ii]/rise_time)-1))/(decy-rise_time);
                  } else {
                         ival[ii] += ampl * (1.0 - exp(tval[ii] / decy));
-                    }
+		 }   
+		 }
                 }
             }
 
