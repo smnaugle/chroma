@@ -24,7 +24,6 @@
 /////////////
 
 #include "globals.hh"
-#include "local_g4compat.hh"
 #include "templates.hh"
 #include "vector"
 #include "list"
