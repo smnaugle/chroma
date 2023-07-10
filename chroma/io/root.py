@@ -305,7 +305,7 @@ class RootWriter(object):
         "Write an event.Event object to the ROOT tree as a ROOT.Event object."
         self.ev.id = pyev.id
         
-        if pyev.photons_beg is not None:
+        if pyev.photons_beg is not None and len(pyev.photons_beg)!=0:
             photons = pyev.photons_beg
             ROOT.fill_photons(self.ev.photons_beg,
                               len(photons.pos),
@@ -318,7 +318,7 @@ class RootWriter(object):
         else:
             self.ev.photons_beg.resize(0)
 
-        if pyev.photons_end is not None:
+        if pyev.photons_end is not None and len(pyev.photons_end)!=0:
             photons = pyev.photons_end
             ROOT.fill_photons(self.ev.photons_end,
                               len(photons.pos),
@@ -331,7 +331,7 @@ class RootWriter(object):
         else:
             self.ev.photons_end.resize(0)
         
-        if pyev.photon_tracks is not None:
+        if pyev.photon_tracks is not None and len(pyev.photon_tracks)!=0:
             self.ev.photon_tracks.resize(len(pyev.photon_tracks))
             for i in range(len(pyev.photon_tracks)):
                 photons = pyev.photon_tracks[i]
