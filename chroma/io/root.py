@@ -182,7 +182,7 @@ def root_event_to_python_event(ev):
         ROOT.get_photons(ev.photons_end,
                          photons.pos.ravel(),
                          photons.dir.ravel(),
-                         photons.pol.ravel(),
+                         photons.pol.ravel(),ust removed the changes I made to that file
                          photons.wavelengths,
                          photons.t,
                          photons.last_hit_triangles,
@@ -307,7 +307,8 @@ class RootWriter(object):
         
         if pyev.photons_beg is not None and len(pyev.photons_beg)!=0:
             photons = pyev.photons_beg
-            ROOT.fill_photons(self.ev.photons_beg,
+            if len(photons.pos) > 0:
+                ROOT.fill_photons(self.ev.photons_beg,
                               len(photons.pos),
                               photons.pos.ravel(),
                               photons.dir.ravel(),
@@ -320,7 +321,8 @@ class RootWriter(object):
 
         if pyev.photons_end is not None and len(pyev.photons_end)!=0:
             photons = pyev.photons_end
-            ROOT.fill_photons(self.ev.photons_end,
+            if len(photons.pos) > 0:
+                ROOT.fill_photons(self.ev.photons_end,
                               len(photons.pos),
                               photons.pos.ravel(),
                               photons.dir.ravel(),
@@ -335,7 +337,8 @@ class RootWriter(object):
             self.ev.photon_tracks.resize(len(pyev.photon_tracks))
             for i in range(len(pyev.photon_tracks)):
                 photons = pyev.photon_tracks[i]
-                ROOT.fill_photons(self.ev.photon_tracks[i],
+                if len(photons.pos) > 0:
+                    ROOT.fill_photons(self.ev.photon_tracks[i],
                               len(photons.pos),
                               photons.pos.ravel(),
                               photons.dir.ravel(),
@@ -343,11 +346,12 @@ class RootWriter(object):
                               photons.wavelengths, photons.t,
                               photons.last_hit_triangles, photons.flags, 
                               photons.channel)
-            if pyev.photon_parent_trackids is not None: 
-                self.ev.photon_parent_trackids.resize(len(pyev.photon_parent_trackids))
-                np.asarray(self.ev.photon_parent_trackids)[:] = pyev.photon_parent_trackids
         else:
             self.ev.photon_tracks.resize(0)
+        if pyev.photon_parent_trackids is not None:
+            self.ev.photon_parent_trackids.resize(len(pyev.photon_parent_trackids))
+            np.asarray(self.ev.photon_parent_trackids)[:] = pyev.photon_parent_trackids
+        else:
             self.ev.photon_parent_trackids.resize(0)
         
         if pyev.vertices is not None:
@@ -361,7 +365,8 @@ class RootWriter(object):
             self.ev.hits.clear()
             for hit in pyev.hits:
                 photons = pyev.hits[hit]
-                ROOT.fill_photons(self.ev.hits[hit],len(photons.pos),
+                if len(photons.pos) > 0:
+                    ROOT.fill_photons(self.ev.hits[hit],len(photons.pos),
                               photons.pos.ravel(),
                               photons.dir.ravel(),
                               photons.pol.ravel(),
@@ -373,7 +378,8 @@ class RootWriter(object):
         
         if pyev.flat_hits is not None:
             photons = pyev.flat_hits
-            ROOT.fill_photons(self.ev.flat_hits,
+            if len(photons.pos) > 0:
+                ROOT.fill_photons(self.ev.flat_hits,
                               len(photons.pos),
                               photons.pos.ravel(),
                               photons.dir.ravel(),

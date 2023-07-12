@@ -1,4 +1,4 @@
-from . import g4gen
+
 import multiprocessing
 import numpy as np
 import threading
@@ -18,6 +18,7 @@ class G4GeneratorProcess(multiprocessing.Process):
         self.daemon = True
 
     def run(self):
+        from . import g4gen
         gen = g4gen.G4Generator(self.material, seed=self.seed)
         context = zmq.Context()
         vertex_socket = context.socket(zmq.PULL)

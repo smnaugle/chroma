@@ -8,7 +8,8 @@ WORKDIR /opt/
 RUN git clone https://github.com/smnaugle/chroma.git
 WORKDIR /opt/chroma/
 RUN sed -i 's/VIRTUAL_ENV/CONDA_PREFIX/g' setup.py #use anaconda env instead
-RUN python setup.py develop
+# RUN python setup.py develop
+RUN pip install -e .
 
 #For jupyter
 EXPOSE 8888
