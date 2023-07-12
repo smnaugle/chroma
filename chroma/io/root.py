@@ -182,7 +182,7 @@ def root_event_to_python_event(ev):
         ROOT.get_photons(ev.photons_end,
                          photons.pos.ravel(),
                          photons.dir.ravel(),
-                         photons.pol.ravel(),ust removed the changes I made to that file
+                         photons.pol.ravel(),
                          photons.wavelengths,
                          photons.t,
                          photons.last_hit_triangles,
