@@ -1,0 +1,11 @@
+[tool.ruff]
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "W"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "single"
