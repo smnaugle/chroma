@@ -50,12 +50,22 @@ try:
 except:
     pass # if numpy doesn't exist yet
 
+# Install cuda files
+cuda_files = []
+for root, dirs, files in os.walk("chroma/"):
+    for file in files:
+        if file.endswith(('.cu','.h')):
+            cuda_files.append(os.path.join(root, file))
+data_files = [
+    ('chroma/cuda', cuda_files)
+]
+
 setup(
     name = 'Chroma',
     version = '0.5',
     packages = find_packages(),
     include_package_data=True,
-
+    data_files=data_files,
     scripts = ['bin/chroma-sim', 'bin/chroma-cam',
                'bin/chroma-geo', 'bin/chroma-bvh',
                'bin/chroma-server'],
